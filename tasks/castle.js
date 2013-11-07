@@ -481,7 +481,7 @@ module.exports = function (grunt) {
                                     }
                                 }
                             } else {
-                                console.error("error executing mocha-phantomjs: " + error);
+                                console.error("error executing " + cmd + " : " + error);
                                 if (stderr) {
                                     console.error(stderr);
                                 }
