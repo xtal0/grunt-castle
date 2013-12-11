@@ -630,7 +630,7 @@ module.exports = function (grunt) {
                 platoReportingPath = createPath(process.cwd(), ('/' + path.normalize(options.reporting.dest + '/analyze')));
 
             this.setup(options);
-            files[platoReportingPath] = createPath(process.cwd(), this.options.reporting.src) + '/*.js';
+            files[platoReportingPath] = createPath(process.cwd(), this.options.reporting.src) + '/**/*.js';
             grunt.config.set('plato', {
                 castle: {
                     files: files
