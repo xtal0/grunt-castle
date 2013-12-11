@@ -205,10 +205,10 @@ module.exports = function (grunt) {
 
             if (envSpecs || commonSpecs) {
                 if(envSpecs) {
-                    specs.concat(getSpecs(path.normalize(specsDef.baseUrl + '/' + envSpecs)));
+                    specs = specs.concat(getSpecs(path.normalize(specsDef.baseUrl + '/' + envSpecs)));
                 }
                 if(commonSpecs){
-                    specs.concat(getSpecs(specsDef.baseUrl + '/' + commonSpecs));
+                    specs = specs.concat(getSpecs(specsDef.baseUrl + '/' + commonSpecs));
                 }
             } else {
                 specs = getSpecs(specsDef.baseUrl);
