@@ -17,6 +17,7 @@ module.exports = function (grunt) {
         fs = require('fs'),
         path = require('path'),
         glob = require('glob'),
+        mkdirp = require('mkdirp'),
         Mocha = require('mocha'),
         handlebars = require('handlebars'),
         _ = grunt.util._,
@@ -300,6 +301,7 @@ module.exports = function (grunt) {
 
             function writeSpec(spec, callback) {
                 var specName = path.basename(spec, '.js'),
+                    specDir = path.relative(specsBaseUrl, path.dirname(spec)),
                     templateData = {
                     config: JSON.stringify(updateConfig(self.options.requirejs.client || self.options.requirejs)),
                     spec: spec,
@@ -308,7 +310,9 @@ module.exports = function (grunt) {
                     requirejsPath: getRequirejsPath()
                 };
 
-                fs.writeFileSync(specsPath + '/' + specName + '.html', template(templateData), 'utf8');
+                mkdirp.sync(specsPath + '/' specDir + '/');
+
+                fs.writeFileSync(specsPath + '/' specDir + '/' + specName + '.html', template(templateData), 'utf8');
             }
 
             function writeSpecs (specsPath) {
