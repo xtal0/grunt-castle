@@ -16,6 +16,7 @@ module.exports = function (grunt) {
         sinonChai = require('sinon-chai'),
         fs = require('fs'),
         path = require('path'),
+        glob = require('glob'),
         Mocha = require('mocha'),
         handlebars = require('handlebars'),
         _ = grunt.util._,
@@ -190,20 +191,25 @@ module.exports = function (grunt) {
         getSpecs: function (specsDef, env) {
             var envSpecs = specsDef[env],
                 commonSpecs = specsDef['common'],
-                specs;
+                specs = [];
 
             function getSpecs(specsPath) {
                 if (!fs.existsSync(specsPath)) {
                     return [];
                 }
 
-                return fs.readdirSync(specsPath).map(function (spec) {
+                return glob.sync('**/*.js', { cwd: specsPath }).map(function (spec) {
                     return path.normalize(specsPath + '/' + spec);
                 });
             }
 
-            if (envSpecs) {
-                specs = getSpecs(specsDef.baseUrl).concat(getSpecs(path.normalize(specsDef.baseUrl + '/' + envSpecs)));
+            if (envSpecs || commonSpecs) {
+                if(envSpecs) {
+                    specs.concat(getSpecs(path.normalize(specsDef.baseUrl + '/' + envSpecs)));
+                }
+                if(commonSpecs){
+                    specs.concat(getSpecs(specsDef.baseUrl + '/' + commonSpecs));
+                }
             } else {
                 specs = getSpecs(specsDef.baseUrl);
             }
