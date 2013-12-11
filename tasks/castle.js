@@ -140,7 +140,7 @@ module.exports = function (grunt) {
                 files;
 
             this.writeClientSpecs(file, function () {
-                files = file ? ('/' + file + '.html') : '/*.html';
+                files = file ? ('/' + file + '.html') : '/**/*.html';
 
                 grunt.task.loadTasks('node_modules/grunt-castle/node_modules/grunt-mocha/tasks');
                 grunt.config.set('mocha', {
