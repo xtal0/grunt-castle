@@ -310,9 +310,9 @@ module.exports = function (grunt) {
                     requirejsPath: getRequirejsPath()
                 };
 
-                mkdirp.sync(specsPath + '/' specDir + '/');
+                mkdirp.sync(specsPath + '/' + specDir + '/');
 
-                fs.writeFileSync(specsPath + '/' specDir + '/' + specName + '.html', template(templateData), 'utf8');
+                fs.writeFileSync(specsPath + '/' + specDir + '/' + specName + '.html', template(templateData), 'utf8');
             }
 
             function writeSpecs (specsPath) {
