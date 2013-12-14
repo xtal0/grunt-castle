@@ -16,6 +16,8 @@ module.exports = function (grunt) {
         sinonChai = require('sinon-chai'),
         fs = require('fs'),
         path = require('path'),
+        glob = require('glob'),
+        mkdirp = require('mkdirp'),
         Mocha = require('mocha'),
         handlebars = require('handlebars'),
         _ = grunt.util._,
@@ -138,7 +140,7 @@ module.exports = function (grunt) {
                 files;
 
             this.writeClientSpecs(file, function () {
-                files = file ? ('/' + file + '.html') : '/*.html';
+                files = file ? ('/' + file + '.html') : '/**/*.html';
 
                 grunt.task.loadTasks('node_modules/grunt-castle/node_modules/grunt-mocha/tasks');
                 grunt.config.set('mocha', {
@@ -190,20 +192,25 @@ module.exports = function (grunt) {
         getSpecs: function (specsDef, env) {
             var envSpecs = specsDef[env],
                 commonSpecs = specsDef['common'],
-                specs;
+                specs = [];
 
             function getSpecs(specsPath) {
                 if (!fs.existsSync(specsPath)) {
                     return [];
                 }
 
-                return fs.readdirSync(specsPath).map(function (spec) {
+                return glob.sync('**/*.js', { cwd: specsPath }).map(function (spec) {
                     return path.normalize(specsPath + '/' + spec);
                 });
             }
 
-            if (envSpecs) {
-                specs = getSpecs(specsDef.baseUrl).concat(getSpecs(path.normalize(specsDef.baseUrl + '/' + envSpecs)));
+            if (envSpecs || commonSpecs) {
+                if(envSpecs) {
+                    specs = specs.concat(getSpecs(path.normalize(specsDef.baseUrl + '/' + envSpecs)));
+                }
+                if(commonSpecs){
+                    specs = specs.concat(getSpecs(specsDef.baseUrl + '/' + commonSpecs));
+                }
             } else {
                 specs = getSpecs(specsDef.baseUrl);
             }
@@ -294,6 +301,7 @@ module.exports = function (grunt) {
 
             function writeSpec(spec, callback) {
                 var specName = path.basename(spec, '.js'),
+                    specDir = path.relative(specsBaseUrl, path.dirname(spec)),
                     templateData = {
                     config: JSON.stringify(updateConfig(self.options.requirejs.client || self.options.requirejs)),
                     spec: spec,
@@ -302,7 +310,9 @@ module.exports = function (grunt) {
                     requirejsPath: getRequirejsPath()
                 };
 
-                fs.writeFileSync(specsPath + '/' + specName + '.html', template(templateData), 'utf8');
+                mkdirp.sync(specsPath + '/' + specDir + '/');
+
+                fs.writeFileSync(specsPath + '/' + specDir + '/' + specName + '.html', template(templateData), 'utf8');
             }
 
             function writeSpecs (specsPath) {
@@ -620,7 +630,7 @@ module.exports = function (grunt) {
                 platoReportingPath = createPath(process.cwd(), ('/' + path.normalize(options.reporting.dest + '/analyze')));
 
             this.setup(options);
-            files[platoReportingPath] = createPath(process.cwd(), this.options.reporting.src) + '/*.js';
+            files[platoReportingPath] = createPath(process.cwd(), this.options.reporting.src) + '/**/*.js';
             grunt.config.set('plato', {
                 castle: {
                     files: files

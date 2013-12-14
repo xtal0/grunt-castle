@@ -48,9 +48,10 @@ grunt.initConfig({
                 },
 
                 specs: {
-                    baseUrl: 'test/specs', // common test specs
+                    baseUrl: 'test/specs', // where to find client/server/common
                     client: 'client', // client only tests
                     server: 'server', // server only tests
+                    common: 'common', // common tests
                     'client-target': 'test/specs/html' // location to write client specs
                 },
 
