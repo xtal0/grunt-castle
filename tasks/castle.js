@@ -18,7 +18,8 @@ module.exports = function (grunt) {
     var path = require('path');
     var Mocha = require('mocha');
     var handlebars = require('handlebars');
-    var _ = grunt.util._;
+    var _ = require('lodash');
+    var findup = require('findup-sync');
     var testModules = ['squire', 'chai', 'sinon', 'sinon-chai', 'grunt-castle'];
     var exec = require("child_process").exec;
 
@@ -100,7 +101,7 @@ module.exports = function (grunt) {
             }
 
             var options = this.options;
-            var reporting = options.resporting;
+            var reporting = options.reporting;
             var exclude = reporting.coverage.exclude;
 
             reporting.src = path.resolve(reporting.src);
@@ -129,8 +130,8 @@ module.exports = function (grunt) {
         // START UNIT TESTING
         test: function (options) {
             var self = this;
-
             this.setup(options);
+
             if (options.server) {
                 this.testServer(options.args[1], function () {
                     if (options.client) {
@@ -148,6 +149,54 @@ module.exports = function (grunt) {
                 });
             }
         },
+
+        coverage: function (options) {
+            var self = this;
+            var waitFor = 0;
+            var ranCount = 0;
+
+            function done() {
+                if (waitFor === ranCount) {
+                    options.done();
+                }
+            }
+
+            options.coverage = true;
+            this.setup(options);
+            this.jscoverage(function (err) {
+                if (options.client) {
+                    waitFor++;
+                    self.writeClientSpecs(options.args[1], function () {
+                        if (options.lcov) {
+                            self.lcovClient(options.args[1], function () {
+                                ranCount++;
+                                done();
+                            });
+                        } else {
+                            self.coverageClient(options.args[1], function () {
+                                ranCount++;
+                                done();
+                            });
+                        }
+                    });
+                }
+                if (options.server) {
+                    waitFor++;
+                    if (options.lcov) {
+                        self.lcovServer(options.args[1], function () {
+                            ranCount++;
+                            done();
+                        });
+                    } else {
+                        self.coverageServer(options.args[1], function () {
+                            ranCount++;
+                            done();
+                        });
+                    }
+                }
+            });
+        },
+        // END TASK ENTRY POINTS
 
         testClient: function (file, callback) {
             var htmlSpecsPath = this.getHtmlSpecsPath();
@@ -193,10 +242,53 @@ module.exports = function (grunt) {
         // END UNIT TESTING
 
         // START COVERAGE
+        jscoverage: function (callback) {
+            var jscovConf = grunt.config.get('jscoverage'),
+                self = this;
+
+            if (grunt.file.exists(this.options.reporting.coverage.dest)) {
+                grunt.file.delete(this.options.reporting.coverage.dest);
+            }
+
+            var args2 = [];
+            args2.push(this.options.reporting.src);
+            args2.push(this.options.reporting.coverage.dest);
+
+            if (!this.options.reporting.highlight) {
+                args2.push('--no-highlight');
+            }
+            if (this.options.reporting.coverage.exclude) {
+                args2.push('--exclude=' + this.options.reporting.coverage.exclude);
+            }
+            if (this.options.reporting.encoding) {
+                args2.push('--encoding=' + this.options.reporting.encoding);
+            }
+            if (this.options.reporting.noInstrument) {
+                args2.push('--no-instrument=' + this.options.reporting.noInstrument);
+            }
+            if (this.options.reporting.jsVersion) {
+                args2.push('--js-version=' + this.options.reporting.jsVersion);
+            }
+
+            grunt.util.spawn({
+                    cmd: 'jscoverage',
+                    args: args2,
+                    opts: {
+                        stdio: 'inherit'
+                    }
+                },
+                function (error, result) {
+                    if (error) {
+                        grunt.log.error(result.stderr);
+                        callback(false);
+                    }
+                    grunt.log.writeln(result.stdout);
+                    callback();
+                });
+        },
 
         // END COVERAGE
 
-        // END TASK ENTRY POINTS
 
         // I/O
         writeClientSpecs: function (file, callback) {
@@ -301,7 +393,7 @@ module.exports = function (grunt) {
 
             var specPath;
             for (var i = 0; i < paths.length; i++) {
-                if ((specPath = grunt.file.findup(spec + '.js', { cwd: paths[i], nocase: true }))) {
+                if ((specPath = findup(spec + '.js', { cwd: paths[i], nocase: true }))) {
                     return specPath;
                 }
             }
