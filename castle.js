@@ -61,9 +61,9 @@ define(function () {
                     requirejs([self._resolveMockPath(modules[i].module)], function (module) {
                         count++;
                         if (isServer) {
-                            global[modules[i].exports] = global[modules[i].exports] || module;
+                            global[modules[i].exports] = module;
                         } else {
-                            window[modules[i].exports] = window[modules[i].exports] || module;
+                            window[modules[i].exports] = module;
                         }
                         if (count === modules.length) {
                             callback();
