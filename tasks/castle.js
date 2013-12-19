@@ -227,12 +227,78 @@ module.exports = function (grunt) {
 
         // I/O
         writeClientSpecs: function (file, callback) {
-            if (file) {
-                file = this.specPathToHtmlSpecPath(this.resolveFileSpec(file, 'client'));
-                // writeSpec(this.resolveFileSpec(file, 'client', specsBaseUrl), callback);
+            var specs = this.getSpecs('client');
+            var self = this;
+            var templateSrc = grunt.file.read(path.normalize(path.dirname(require.resolve('grunt-castle')) + '/spec.hbs'));
+            var template = handlebars.compile(templateSrc);
+
+            function updateConfig(config) {
+                var paths = config.paths;
+
+                function getPath(moduleMain) {
+                    return path.normalize(path.dirname(moduleMain) + '/' + path.basename(moduleMain, '.js'));
+                }
+
+                testModules.forEach(function (module) {
+                    if (module === 'squire') {
+                        try {
+                            require('squirejs');
+                        } catch (e) {
+                            paths[module] = getPath(require.resolve('squirejs'));
+                        }
+                    } else {
+                        if (module === 'grunt-castle') {
+                            paths['castle'] = path.dirname(require.resolve(module)) + '/castle';
+                        } else if (module === 'chai') {
+                            paths[module] = path.dirname(require.resolve(module)) + '/chai';
+                        } else if (module === 'sinon') {
+                            paths[module] = path.resolve('node_modules/grunt-castle/vendor/sinon-1.7.1.js').replace('.js', '');
+                        } else {
+                            paths[module] = getPath(require.resolve(module));
+                        }
+                    }
+                });
+
+                return config;
+            }
+
+            function getRequirejsPath() {
+                var rjs = path.dirname(require.resolve('requirejs'));
+                rjs = rjs.split('/');
+                rjs = rjs.slice(1, rjs.length - 1);
+                return '/' + rjs.join('/') + '/require.js';
+            }
+
+            function writeSpec(spec, specHtmlPath, callback) {
+                var specName = path.basename(spec, '.js');
+                var templateData = {
+                    config: JSON.stringify(updateConfig(self.options.requirejs.client || self.options.requirejs)),
+                    spec: spec,
+                    castle: JSON.stringify(global.castle.config),
+                    basePath: process.cwd() + '/node_modules/grunt-castle',
+                    requirejsPath: getRequirejsPath()
+                };
+
+                grunt.file.write(specHtmlPath, template(templateData));
                 callback();
+            }
+
+            if (file) {
+                var spec = this.resolveFileSpec(file, 'client');
+                var specHtmlPath = this.specPathToHtmlSpecPath(spec);
+                writeSpec(spec, specHtmlPath, callback);
             } else {
-                ;// writeSpecs(specsPath);
+                var counter = 0;
+                var limit = specs.length;
+                specs.forEach(function (spec) {
+                    var specHtmlPath = self.specPathToHtmlSpecPath(path.resolve(spec));
+                    writeSpec(spec, specHtmlPath, function () {
+                        counter++;
+                        if (counter === limit) {
+                            callback();
+                        }
+                    });
+                });
             }
         },
 
@@ -247,15 +313,10 @@ module.exports = function (grunt) {
 
         specPathToHtmlSpecPath: function (specPath) {
             var htmlSpecDir = this.getHtmlSpecsPath();
-            var relativeSpecPath = specPath.replace(process.cwd() + '/', '');
-            var clientSpecs = this.getSpecs('client');
+            var relativeSpecPath = specPath.replace(process.cwd() + '/', '').replace(this.options.specs.baseUrl + '/', '');
+            var absoluteHtmlSpecPath = path.normalize(htmlSpecDir + '/' + relativeSpecPath);
 
-console.log(specPath);
-console.log(relativeSpecPath);
-console.log(htmlSpecDir);
-console.log(clientSpecs);
-
-
+            return path.normalize(path.dirname(absoluteHtmlSpecPath) + '/' + path.basename(absoluteHtmlSpecPath, '.js')) + '.html';
         },
 
         resolveFileSpec: function (spec, env) {
