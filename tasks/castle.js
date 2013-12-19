@@ -58,10 +58,24 @@ module.exports = function (grunt) {
             var requirejsConfs = options.requirejs;
             var self = this;
 
-            specs.client = grunt.file.expand(specs.client);
-            specs.server = grunt.file.expand(specs.server);
-            specs.common = grunt.file.expand(specs.common);
-            options.mocks.baseUrl = path.resolve(options.mocks.baseUrl);
+            function resolveGlobs(globs) {
+                globs = _.isArray(globs) ? globs : [globs];
+
+                return globs.map(function (glob) {
+                    var firstChar = glob.substring(0, 1);
+                    if (firstChar === '!') {
+                        if (glob.substring(1, 1) === '/') {
+                            return '!' + specs.baseUrl + glob.substring(1, 1);
+                        } else {
+                            return '!' + specs.baseUrl + '/' + glob.substring(1, 1);
+                        }
+                    } else if (firstChar === '/') {
+                        return specs.baseUrl + glob;
+                    } else {
+                        return specs.baseUrl + '/' + glob;
+                    }
+                });
+            }
 
             function resolvePaths(conf) {
                 // set all paths to absolute
@@ -71,7 +85,9 @@ module.exports = function (grunt) {
                 }
             }
 
+            options.mocks.baseUrl = path.resolve(options.mocks.baseUrl);
             ['server', 'client', 'common'].forEach(function (env) {
+                specs[env] = grunt.file.expand(resolveGlobs(specs[env]));
                 if (requirejsConfs[env]) {
                     resolvePaths(requirejsConfs[env]);
                 }
@@ -134,7 +150,53 @@ module.exports = function (grunt) {
         },
 
         testClient: function (file, callback) {
-            callback();
+            var mochaConf = grunt.config.get('mocha');
+            var htmlSpecsPath = this.getHtmlSpecsPath();
+            var self = this;
+            var files;
+
+            this.writeClientSpecs(file, function () {
+                // var files = file ? ('/' + file + '.html') : '**/*.html';
+
+                // grunt.task.loadTasks('node_modules/grunt-castle/node_modules/grunt-mocha/tasks');
+                // grunt.config.set('mocha', {
+                //     client: {
+                //         src: (specPath + files),
+                //         options: {
+                //             reporter: 'Spec'
+                //         }
+                //     }
+                // });
+                // grunt.task.run('mocha:client');
+                callback();
+            });
+
+
+
+
+
+
+
+            // var mochaConf = grunt.config.get('mocha'),
+            //     specPath = process.cwd() + '/' + this.options.specs['client-target'],
+            //     self = this,
+            //     files;
+
+            // this.writeClientSpecs(file, function () {
+            //     files = file ? ('/' + file + '.html') : '/*.html';
+
+            //     grunt.task.loadTasks('node_modules/grunt-castle/node_modules/grunt-mocha/tasks');
+            //     grunt.config.set('mocha', {
+            //         client: {
+            //             src: (specPath + files),
+            //             options: {
+            //                 reporter: 'Spec'
+            //             }
+            //         }
+            //     });
+            //     grunt.task.run('mocha:client');
+            //     callback();
+            // });
         },
 
         testServer: function (file, callback) {
@@ -163,24 +225,46 @@ module.exports = function (grunt) {
 
         // END TASK ENTRY POINTS
 
+        // I/O
+        writeClientSpecs: function (file, callback) {
+            if (file) {
+                file = this.specPathToHtmlSpecPath(this.resolveFileSpec(file, 'client'));
+                // writeSpec(this.resolveFileSpec(file, 'client', specsBaseUrl), callback);
+                callback();
+            } else {
+                ;// writeSpecs(specsPath);
+            }
+        },
+
         // UTILS
+        getHtmlSpecsPath: function () {
+            return path.resolve(this.options.specs['client-target']);
+        },
+
         getSpecs: function (env) {
             return this.options.specs.common.concat(this.options.specs[env]);
+        },
+
+        specPathToHtmlSpecPath: function (specPath) {
+            var htmlSpecDir = this.getHtmlSpecsPath();
+            var relativeSpecPath = specPath.replace(process.cwd() + '/', '');
+            var clientSpecs = this.getSpecs('client');
+
+console.log(specPath);
+console.log(relativeSpecPath);
+console.log(htmlSpecDir);
+console.log(clientSpecs);
+
+
         },
 
         resolveFileSpec: function (spec, env) {
             var specs = this.getSpecs(env);
             var paths = [];
 
-            paths = specs.map(function (spec) {
-                return path.dirname(spec);
-            }).filter(function (spec, index, self) {
-                if (!index) {
-                    return true;
-                } else {
-                    return spec.split('/').length <= self[index - 1].split('/').length && spec !== self[index];
-                }
-            }).sort();
+            paths = _.unique(specs.map(function (spec) {
+                        return path.dirname(spec);
+                    }).sort());
 
             var specPath;
             for (var i = 0; i < paths.length; i++) {
