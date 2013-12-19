@@ -150,53 +150,26 @@ module.exports = function (grunt) {
         },
 
         testClient: function (file, callback) {
-            var mochaConf = grunt.config.get('mocha');
             var htmlSpecsPath = this.getHtmlSpecsPath();
             var self = this;
             var files;
 
             this.writeClientSpecs(file, function () {
-                // var files = file ? ('/' + file + '.html') : '**/*.html';
+                files = file ? ('/' + file + '.html') : '/**/*.html';
 
-                // grunt.task.loadTasks('node_modules/grunt-castle/node_modules/grunt-mocha/tasks');
-                // grunt.config.set('mocha', {
-                //     client: {
-                //         src: (specPath + files),
-                //         options: {
-                //             reporter: 'Spec'
-                //         }
-                //     }
-                // });
-                // grunt.task.run('mocha:client');
+                grunt.task.loadTasks('node_modules/grunt-castle/node_modules/grunt-mocha/tasks');
+                grunt.config.set('mocha', {
+                    client: {
+                        src: (htmlSpecsPath + files),
+                        options: {
+                            reporter: 'Spec'
+                        }
+                    }
+                });
+                grunt.task.run('mocha:client');
+
                 callback();
             });
-
-
-
-
-
-
-
-            // var mochaConf = grunt.config.get('mocha'),
-            //     specPath = process.cwd() + '/' + this.options.specs['client-target'],
-            //     self = this,
-            //     files;
-
-            // this.writeClientSpecs(file, function () {
-            //     files = file ? ('/' + file + '.html') : '/*.html';
-
-            //     grunt.task.loadTasks('node_modules/grunt-castle/node_modules/grunt-mocha/tasks');
-            //     grunt.config.set('mocha', {
-            //         client: {
-            //             src: (specPath + files),
-            //             options: {
-            //                 reporter: 'Spec'
-            //             }
-            //         }
-            //     });
-            //     grunt.task.run('mocha:client');
-            //     callback();
-            // });
         },
 
         testServer: function (file, callback) {
@@ -270,10 +243,9 @@ module.exports = function (grunt) {
             }
 
             function writeSpec(spec, specHtmlPath, callback) {
-                var specName = path.basename(spec, '.js');
                 var templateData = {
                     config: JSON.stringify(updateConfig(self.options.requirejs.client || self.options.requirejs)),
-                    spec: spec,
+                    spec: path.resolve(spec),
                     castle: JSON.stringify(global.castle.config),
                     basePath: process.cwd() + '/node_modules/grunt-castle',
                     requirejsPath: getRequirejsPath()
