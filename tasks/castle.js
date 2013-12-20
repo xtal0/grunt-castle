@@ -23,14 +23,50 @@ module.exports = function (grunt) {
     var testModules = ['squire', 'chai', 'sinon', 'sinon-chai', 'grunt-castle'];
     var exec = require("child_process").exec;
 
-    // UTILS
+    // CODE COVERAGE REPORTING UTILS
+    function aggregate(results, result) { // mocha json-cov reporter
+        results.files = results.files.concat(result.files);
+        results.hits += result.hits;
+        results.misses += result.misses;
+        results.sloc += result.sloc;
 
+        results.files.sort(function(a, b) {
+            return a.filename.localeCompare(b.filename);
+        });
 
+        if (results.sloc > 0) {
+            results.coverage = (results.hits / results.sloc) * 100;
+        }
+        return results;
+    }
+
+    function coverageClass(n) { // mocha html-cov reporter
+        if (n >= 75) {
+            return 'high';
+        }
+        if (n >= 50) {
+            return 'medium';
+        }
+        if (n >= 25) {
+            return 'low';
+        }
+        return 'terrible';
+    }
+
+    function writeClientCoverage(results, dest) {
+        var jade = require('jade');
+        var templateFilePath = process.cwd() + '/node_modules/grunt-castle/client-cov-templates/client-coverage.jade';
+        var templateSrc = fs.readFileSync(templateFilePath, 'utf8');
+        var fn = jade.compile(templateSrc, { filename: templateFilePath });
+
+        grunt.file.write(dest + '/index.html', fn({ cov: results, coverageClass: coverageClass }));
+    }
+
+    // TASK
     // task life cycle
     // 1. task entry points
     // 2. setup
     // 3. env specific tasks
-
     var castle = {
 
         // START SETUP
@@ -152,10 +188,11 @@ module.exports = function (grunt) {
 
         coverage: function (options) {
             var self = this;
-            var waitFor = 0;
+            var waitFor = options.client && options.server ? 2 : 1;
             var ranCount = 0;
 
             function done() {
+                ranCount++;
                 if (waitFor === ranCount) {
                     options.done();
                 }
@@ -165,31 +202,25 @@ module.exports = function (grunt) {
             this.setup(options);
             this.jscoverage(function (err) {
                 if (options.client) {
-                    waitFor++;
                     self.writeClientSpecs(options.args[1], function () {
                         if (options.lcov) {
                             self.lcovClient(options.args[1], function () {
-                                ranCount++;
                                 done();
                             });
                         } else {
                             self.coverageClient(options.args[1], function () {
-                                ranCount++;
                                 done();
                             });
                         }
                     });
                 }
                 if (options.server) {
-                    waitFor++;
                     if (options.lcov) {
                         self.lcovServer(options.args[1], function () {
-                            ranCount++;
                             done();
                         });
                     } else {
                         self.coverageServer(options.args[1], function () {
-                            ranCount++;
                             done();
                         });
                     }
@@ -287,8 +318,55 @@ module.exports = function (grunt) {
                 });
         },
 
-        // END COVERAGE
+        coverageClient: function (file, callback, lcov) {
+            var options = this.options;
+            var results;
+            var count = 0;
+            var files = [];
+            var specs = grunt.file.expand(path.resolve(options.specs['client-target']) + '/**/*.html');
+            var covReportPath = this.getCovReportPath('client');
+            var self = this;
 
+            specs.forEach(function (spec) {
+                var cmd = "node_modules/grunt-castle/node_modules/mocha-phantomjs/bin/mocha-phantomjs " + spec +  " -R json-cov";
+                var mocha = exec(cmd,
+                    { maxBuffer: 10000 * 1024 },
+                    function(error, stdout, stderr) {
+                        if (!error) {
+                            var result = JSON.parse(stdout);
+                            if (!results) {
+                                results = result;
+                            } else {
+                                results = aggregate(results, result);
+                            }
+                            count++;
+                            if (count === specs.length) {
+                                if (lcov) {
+                                    self.lcovClient(results, callback);
+                                } else {
+                                    if (!grunt.file.exists(covReportPath)) {
+                                        grunt.file.mkdir(covReportPath);
+                                    }
+                                    writeClientCoverage(results, covReportPath);
+                                    return callback();
+                                }
+                            }
+                        } else {
+                            console.error("error executing " + cmd + " : " + error);
+                            if (stderr) {
+                                console.error(stderr);
+                            }
+                            process.exit(1);
+                        }
+                    }
+                );
+            });
+        },
+
+        coverageServer: function (file, callback) {
+            callback();
+        },
+        // END COVERAGE
 
         // I/O
         writeClientSpecs: function (file, callback) {
@@ -369,6 +447,10 @@ module.exports = function (grunt) {
         // UTILS
         getHtmlSpecsPath: function () {
             return path.resolve(this.options.specs['client-target']);
+        },
+
+        getCovReportPath: function (env) { // TODO: make the dir name configurable
+            return path.resolve(this.options.reporting.dest + '/' + env + '-coverage');
         },
 
         getSpecs: function (env) {
