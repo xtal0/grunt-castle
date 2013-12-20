@@ -363,8 +363,46 @@ module.exports = function (grunt) {
             });
         },
 
-        coverageServer: function (file, callback) {
-            callback();
+        coverageServer: function (file, callback, lcov) {
+            var covReportPath = this.getCovReportPath('server');
+            var specs = this.getSpecs('server');
+            var outFile = path.normalize(covReportPath + (lcov ? '/index.json' : '/index.html'));
+            var reporter = lcov ? 'json-cov' : 'html-cov';
+            var mocha = new Mocha({ ui: 'bdd', reporter: reporter });
+            var counter = 0;
+            var output;
+            var specCount = specs.length;
+            var self = this;
+            var _stdout = process.stdout.write;
+
+            if (!grunt.file.exists(covReportPath)) {
+                grunt.file.mkdir(covReportPath);
+            }
+
+            output = fs.createWriteStream(outFile, { flags: 'w' });
+            process.stdout.write = function(chunk, encoding, cb) {
+                return output.write(chunk, encoding, cb);
+            };
+
+            function run() {
+                mocha.run(function () {
+                    output.end();
+                    process.stdout.write = _stdout;
+                    if (lcov) {
+                        self.lcovServer(callback);
+                    } else {
+                        callback();
+                    }
+                });
+            }
+
+            specs.forEach(function (spec) {
+                mocha.addFile(spec);
+                counter++;
+                if (counter === specCount) {
+                    run();
+                }
+            });
         },
         // END COVERAGE
 
