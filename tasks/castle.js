@@ -256,6 +256,21 @@ module.exports = function (grunt) {
                 }
             });
         },
+
+        analyze: function (options) {
+            var files = {};
+            this.setup(options);
+
+            files[path.resolve(this.options.reporting.dest + '/analysis')] = this.options.reporting.src;
+            grunt.config.set('plato', {
+                castle: {
+                    files: files
+                }
+            });
+            grunt.task.loadTasks('node_modules/grunt-castle/node_modules/grunt-plato/tasks');
+            grunt.task.run('plato:castle');
+            options.done();
+        },
         // END TASK ENTRY POINTS
 
         testClient: function (file, callback) {
@@ -570,6 +585,7 @@ module.exports = function (grunt) {
         getCovReportPath: function (env) { // TODO: make the dir name configurable
             return path.resolve(this.options.reporting.dest + '/' + env + '-coverage');
         },
+
 
         getSpecs: function (env) {
             return this.options.specs.common.concat(this.options.specs[env]);
