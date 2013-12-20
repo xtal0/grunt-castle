@@ -328,6 +328,7 @@ module.exports = function (grunt) {
             var self = this;
 
             specs.forEach(function (spec) {
+                grunt.log.writeln('running client spec:' + spec);
                 var cmd = "node_modules/grunt-castle/node_modules/mocha-phantomjs/bin/mocha-phantomjs " + spec +  " -R json-cov";
                 var mocha = exec(cmd,
                     { maxBuffer: 10000 * 1024 },
@@ -347,6 +348,7 @@ module.exports = function (grunt) {
                                     if (!grunt.file.exists(covReportPath)) {
                                         grunt.file.mkdir(covReportPath);
                                     }
+                                    grunt.log.writeln('writing client coverage report');
                                     writeClientCoverage(results, covReportPath);
                                     return callback();
                                 }
@@ -380,14 +382,15 @@ module.exports = function (grunt) {
             }
 
             output = fs.createWriteStream(outFile, { flags: 'w' });
-            process.stdout.write = function(chunk, encoding, cb) {
-                return output.write(chunk, encoding, cb);
-            };
-
             function run() {
+                grunt.log.writeln('running server specs...');
+                process.stdout.write = function(chunk, encoding, cb) {
+                    return output.write(chunk, encoding, cb);
+                };
                 mocha.run(function () {
                     output.end();
                     process.stdout.write = _stdout;
+                    grunt.log.writeln('writing server coverage report');
                     if (lcov) {
                         self.lcovServer(callback);
                     } else {
@@ -397,6 +400,7 @@ module.exports = function (grunt) {
             }
 
             specs.forEach(function (spec) {
+                grunt.log.writeln('adding server spec:' + spec);
                 mocha.addFile(spec);
                 counter++;
                 if (counter === specCount) {
@@ -459,6 +463,7 @@ module.exports = function (grunt) {
                     requirejsPath: getRequirejsPath()
                 };
 
+                grunt.log.writeln('writing spec:' + specHtmlPath);
                 grunt.file.write(specHtmlPath, template(templateData));
                 callback();
             }
