@@ -1,19 +1,33 @@
 {
     "name": "grunt-castle",
-    "description": "Requirejs client, server testing made easy.",
-    "version": "0.2.0",
+    "description": "requirejs client, server, and client-server unit testing",
+    "version": "0.3.1",
     "homepage": "",
     "private": true,
     "author": {
         "name": "Jason",
-        "email": "JStrimpel@walmartlabs.com"
+        "email": "jstrimpel@walmartlabs.com"
     },
+    "contributors": [
+        {
+            "name": "Micheal Davis",
+            "email": "mdavis@walmartlabs.com"
+        },
+        {
+            "name": "Paul Knepper",
+            "email": "pknennper@walmartlabs.com"
+        },
+        {
+            "name": "Crystal Barnes",
+            "email": "cbarnes@walmartlabs.com"
+        }
+    ],
     "repository": {
         "type": "git",
-        "url": "https://gecgithub01.walmart.com/jstrimp/grunt-castle.git"
+        "url": "https://github.com/walmartlabs/grunt-castle/grunt-castle.git"
     },
     "bugs": {
-        "url": ""
+        "url": "https://github.com/walmartlabs/grunt-castle/issues"
     },
     "licenses": [
         {
@@ -45,8 +59,8 @@
         "grunt-plato": "0.2.x",
         "mocha-phantomjs": "3.1.x",
         "jade": "0.27.x",
-        "glob": "3.2.x",
-        "mkdirp": "0.3.x"
+        "lodash": "2.4.x",
+        "findup-sync": "0.1.x"
     },
     "devDependencies": {
         "grunt-contrib-jshint": "~0.6.0",
