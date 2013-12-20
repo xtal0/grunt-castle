@@ -227,6 +227,35 @@ module.exports = function (grunt) {
                 }
             });
         },
+
+        lcov: function (options) {
+            var self = this;
+            var waitFor = options.client && options.server ? 2 : 1;
+            var ranCount = 0;
+
+            function done() {
+                ranCount++;
+                if (waitFor === ranCount) {
+                    options.done();
+                }
+            }
+
+            options.coverage = true;
+            this.setup(options);
+            this.jscoverage(function (err) {
+                if (options.client) {
+                    self.coverageClient(options.args[1], function (results) {
+                        done();
+                    }, true);
+                }
+
+                if (options.server) {
+                    self.coverageServer(options.args[1], function (results) {
+                        done();
+                    }, true);
+                }
+            });
+        },
         // END TASK ENTRY POINTS
 
         testClient: function (file, callback) {
@@ -408,9 +437,55 @@ module.exports = function (grunt) {
                 }
             });
         },
+
+        lcovServer: function (callback) {
+            var covReportPath = path.normalize(this.getCovReportPath('server') + '/index.json');
+            var results = grunt.file.readJSON(covReportPath);
+            this.writeLcovResults(results, 'server', callback);
+        },
+
+        lcovClient: function (results, callback) {
+            this.writeLcovResults(results, 'client', callback);
+        },
         // END COVERAGE
 
         // I/O
+        writeLcovResults: function (results, env, callback) {
+            var covReportPath = this.getCovReportPath(env);
+            var lcovFile = covReportPath + '/index.lcov';
+            var stream;
+
+            if (!grunt.file.exists(covReportPath)) {
+                grunt.file.mkdir(covReportPath);
+            }
+            if (grunt.file.exists(lcovFile)) {
+                grunt.file.delete(lcovFile);
+            }
+            stream = fs.createWriteStream(lcovFile);
+
+            var fileCount = results.files.length;
+            for (var j = 0; j < fileCount; j++) {
+                var file = results.files[j];
+                var lcov = 'SF:' + file.filename + '\n';
+                var lines = file.source;
+                for (var k in lines) {
+                    if (lines.hasOwnProperty(k)) {
+                        var line = lines[k];
+                        if (line.coverage !== '') {
+                            lcov = lcov + 'DA:' + k + ',' + line.coverage + '\n';
+                        }
+                    }
+                }
+                lcov = lcov + 'end_of_record\n';
+                stream.write(lcov);
+            }
+            stream.end();
+            if (env === 'server') {
+                grunt.file.delete(covReportPath + '/index.json');
+            }
+            callback();
+        },
+
         writeClientSpecs: function (file, callback) {
             var specs = this.getSpecs('client');
             var self = this;
