@@ -10,52 +10,6 @@
 
 module.exports = function (grunt) {
 
-<<<<<<< HEAD
-    var requirejs = require('requirejs'),
-        chai = require('chai'),
-        sinon = require('sinon'),
-        sinonChai = require('sinon-chai'),
-        fs = require('fs'),
-        path = require('path'),
-        glob = require('glob'),
-        mkdirp = require('mkdirp'),
-        Mocha = require('mocha'),
-        handlebars = require('handlebars'),
-        _ = grunt.util._,
-        testModules = ['squire', 'chai', 'sinon', 'sinon-chai', 'grunt-castle'],
-        exec = require("child_process").exec;
-
-    // setup globals for unit testing
-    global.requirejs = requirejs;
-    chai.use(sinonChai);
-    global.chai = chai;
-    global.assert = chai.assert;
-    global.expect = chai.expect;
-    global.sinon = sinon;
-
-    function createPath(basePath, subdir) {
-        var subdirs = subdir.split('/'),
-            fullPath = path.normalize(basePath + '/' + subdir),
-            currentPath = basePath;
-        subdirs = subdirs.length ? subdirs : [subdir];
-
-        if (fs.existsSync(path.normalize(basePath + '/' + subdir))) {
-            return fullPath;
-        }
-        if (!fs.existsSync(basePath)) {
-            fs.mkdirSync(basePath);
-        }
-        subdirs.forEach(function (dir) {
-            currentPath += ('/' + dir);
-            if (!fs.existsSync(currentPath)) {
-                fs.mkdirSync(currentPath);
-            }
-        });
-
-        return fullPath;
-    }
-
-=======
     var requirejs = require('requirejs');
     var chai = require('chai');
     var sinon = require('sinon');
@@ -70,7 +24,6 @@ module.exports = function (grunt) {
     var exec = require("child_process").exec;
 
     // CODE COVERAGE REPORTING UTILS
->>>>>>> refactor_cleanup
     function aggregate(results, result) { // mocha json-cov reporter
         results.files = results.files.concat(result.files);
         results.hits += result.hits;
@@ -238,17 +191,12 @@ module.exports = function (grunt) {
             var waitFor = options.client && options.server ? 2 : 1;
             var ranCount = 0;
 
-<<<<<<< HEAD
-            this.writeClientSpecs(file, function () {
-                files = file ? ('/' + file + '.html') : '/**/*.html';
-=======
             function done() {
                 ranCount++;
                 if (waitFor === ranCount) {
                     options.done();
                 }
             }
->>>>>>> refactor_cleanup
 
             options.coverage = true;
             this.setup(options);
@@ -292,43 +240,6 @@ module.exports = function (grunt) {
                 }
             }
 
-<<<<<<< HEAD
-            if (fs.existsSync(envPath)) {
-                return envPath;
-            } else {
-                return path.normalize(baseUrl + '/' + fileName);
-            }
-        },
-
-        getSpecs: function (specsDef, env) {
-            var envSpecs = specsDef[env],
-                commonSpecs = specsDef['common'],
-                specs = [];
-
-            function getSpecs(specsPath) {
-                if (!fs.existsSync(specsPath)) {
-                    return [];
-                }
-
-                return glob.sync('**/*.js', { cwd: specsPath }).map(function (spec) {
-                    return path.normalize(specsPath + '/' + spec);
-                });
-            }
-
-            if (envSpecs || commonSpecs) {
-                if(envSpecs) {
-                    specs = specs.concat(getSpecs(path.normalize(specsDef.baseUrl + '/' + envSpecs)));
-                }
-                if(commonSpecs){
-                    specs = specs.concat(getSpecs(specsDef.baseUrl + '/' + commonSpecs));
-                }
-            } else {
-                specs = getSpecs(specsDef.baseUrl);
-            }
-
-            return specs.filter(function (spec) {
-                return path.extname(spec) === '.js';
-=======
             options.coverage = true;
             this.setup(options);
             this.jscoverage(function (err) {
@@ -343,7 +254,6 @@ module.exports = function (grunt) {
                         done();
                     }, true);
                 }
->>>>>>> refactor_cleanup
             });
         },
 
@@ -382,41 +292,9 @@ module.exports = function (grunt) {
                 });
                 grunt.task.run('mocha:client');
 
-<<<<<<< HEAD
-                return config;
-            }
-
-            function getRequirejsPath() {
-                var rjs = path.dirname(require.resolve('requirejs'));
-                rjs = rjs.split('/');
-                rjs = rjs.slice(1, rjs.length - 1);
-                return '/' + rjs.join('/') + '/require.js';
-            }
-
-            function writeSpec(spec, callback) {
-                var specName = path.basename(spec, '.js'),
-                    specDir = path.relative(specsBaseUrl, path.dirname(spec)),
-                    templateData = {
-                    config: JSON.stringify(updateConfig(self.options.requirejs.client || self.options.requirejs)),
-                    spec: spec,
-                    castle: JSON.stringify(global.castle.config),
-                    basePath: process.cwd() + '/node_modules/grunt-castle',
-                    requirejsPath: getRequirejsPath()
-                };
-
-                mkdirp.sync(specsPath + '/' + specDir + '/');
-
-                fs.writeFileSync(specsPath + '/' + specDir + '/' + specName + '.html', template(templateData), 'utf8');
-            }
-
-            function writeSpecs (specsPath) {
-                var specs = self.getSpecs(self.options.specs, 'client'),
-                    fileCount = specs.length;
-=======
                 callback();
             });
         },
->>>>>>> refactor_cleanup
 
         testServer: function (file, callback) {
             var specs = this.getSpecs('server');
@@ -629,19 +507,11 @@ module.exports = function (grunt) {
             var templateSrc = grunt.file.read(path.normalize(path.dirname(require.resolve('grunt-castle')) + '/spec.hbs'));
             var template = handlebars.compile(templateSrc);
 
-<<<<<<< HEAD
-            this.setup(options);
-            files[platoReportingPath] = createPath(process.cwd(), this.options.reporting.src) + '/**/*.js';
-            grunt.config.set('plato', {
-                castle: {
-                    files: files
-=======
             function updateConfig(config) {
                 var paths = config.paths;
 
                 function getPath(moduleMain) {
                     return path.normalize(path.dirname(moduleMain) + '/' + path.basename(moduleMain, '.js'));
->>>>>>> refactor_cleanup
                 }
 
                 testModules.forEach(function (module) {
