@@ -261,7 +261,7 @@ module.exports = function (grunt) {
             var files = {};
             this.setup(options);
 
-            files[path.resolve(this.options.reporting.dest + '/analysis')] = this.options.reporting.src;
+            files[path.resolve(this.options.reporting.dest + '/analysis')] = this.options.reporting.analysis.files;
             grunt.config.set('plato', {
                 castle: {
                     files: files
