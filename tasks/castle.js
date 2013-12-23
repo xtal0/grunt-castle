@@ -658,6 +658,9 @@ module.exports = function (grunt) {
             done: done
         });
 
+        if (!this.args[0]) {
+            this.args[0] = 'test';
+        }
         switch (this.args[0]) {
             case 'test':
                 options.server = true;
