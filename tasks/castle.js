@@ -156,12 +156,7 @@ module.exports = function (grunt) {
         },
 
         requirejsConfigure: function () {
-            var conf = _.clone(this.options.requirejs.server || this.options.requirejs, true);
-            if (this.options.coverage && this.options.reporting.coverage.baseUrl) {
-                conf.baseUrl = this.options.reporting.coverage.baseUrl;
-            }
-
-            requirejs.config(conf);
+            requirejs.config(_.clone(this.options.requirejs.server || this.options.requirejs, true));
             global.castle = {};
             global.castle.config = this.options;
         },
