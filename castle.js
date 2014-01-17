@@ -28,24 +28,40 @@ define(function () {
         _loadMocks: function (modules, callback) {
             var count = 0,
                 mocks = {},
-                self = this;
+                self = this,
+                incrementAndCheck = function(){
+                    count++;
+                    if (count === modules.length) {
+                        callback(mocks);
+                    }
+                };
+
             if (!modules || !modules.length) {
                 return callback();
             }
 
             for (var i = 0; i < modules.length; i++) {
                 (function (i) {
-                    self._loadMock(modules[i], function (module) {
-                        if (typeof module === 'function') {
-                            mocks[modules[i]] = _Squire.Helpers.returns(module);
-                        } else {
-                            mocks[modules[i]] = module;
+                    var curModule = modules[i];
+                    if (typeof curModule === 'string'){
+                        self._loadMock(curModule, function (module) {
+                            if (typeof module === 'function') {
+                                mocks[curModule] = _Squire.Helpers.returns(module);
+                            } else {
+                                mocks[curModule] = module;
+                            }
+
+                            incrementAndCheck();
+                        });
+                    } else if (typeof curModule === 'object'){
+                        for (var property in curModule){
+                           if (curModule.hasOwnProperty(property)){
+                               mocks[property] = curModule[property];
+                           }
                         }
-                        count++;
-                        if (count === modules.length) {
-                            callback(mocks);
-                        }
-                    });
+
+                        incrementAndCheck();
+                    }
                 })(i);
             }
         },
