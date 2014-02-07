@@ -340,7 +340,7 @@ module.exports = function (grunt) {
             }
             if (this.options.reporting.noInstrument) {
                 var toIgnore = this.options.reporting.noInstrument;
-                if (typeof toExclude === 'string') {
+                if (typeof toIgnore === 'string') {
                     args2.push('--no-instrument=' + toIgnore);
                 } else {
                     for (var idx = 0; idx < toIgnore.length; idx++) {
