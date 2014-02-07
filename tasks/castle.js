@@ -339,7 +339,14 @@ module.exports = function (grunt) {
                 args2.push('--encoding=' + this.options.reporting.encoding);
             }
             if (this.options.reporting.noInstrument) {
-                args2.push('--no-instrument=' + this.options.reporting.noInstrument);
+                var toIgnore = this.options.reporting.noInstrument;
+                if (typeof toExclude === 'string') {
+                    args2.push('--no-instrument=' + toIgnore);
+                } else {
+                    for (var idx = 0; idx < toIgnore.length; idx++) {
+                        args2.push('--no-instrument=' + toIgnore[idx]);
+                    }
+                }
             }
             if (this.options.reporting.jsVersion) {
                 args2.push('--js-version=' + this.options.reporting.jsVersion);
