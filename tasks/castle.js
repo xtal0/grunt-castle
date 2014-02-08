@@ -22,6 +22,7 @@ module.exports = function (grunt) {
     var findup = require('findup-sync');
     var testModules = ['squire', 'chai', 'sinon', 'sinon-chai', 'grunt-castle'];
     var exec = require("child_process").exec;
+    var util = require('util');
 
     // CODE COVERAGE REPORTING UTILS
     function aggregate(results, result) { // mocha json-cov reporter
@@ -37,6 +38,10 @@ module.exports = function (grunt) {
         if (results.sloc > 0) {
             results.coverage = (results.hits / results.sloc) * 100;
         }
+
+        //grunt.log.writeln('\n\n\n\n\nresult: ' + util.inspect(result, true, null));
+        //grunt.log.writeln('\n\n\n\n\naggregate: ' + util.inspect(results, true, null));
+
         return results;
     }
 
@@ -339,7 +344,14 @@ module.exports = function (grunt) {
                 args2.push('--encoding=' + this.options.reporting.encoding);
             }
             if (this.options.reporting.noInstrument) {
-                args2.push('--no-instrument=' + this.options.reporting.noInstrument);
+                var toIgnore = this.options.reporting.noInstrument;
+                if (typeof toIgnore === 'string') {
+                    args2.push('--no-instrument=' + toIgnore);
+                } else {
+                    for (var idx = 0; idx < toIgnore.length; idx++) {
+                        args2.push('--no-instrument=' + toIgnore[idx]);
+                    }
+                }
             }
             if (this.options.reporting.jsVersion) {
                 args2.push('--js-version=' + this.options.reporting.jsVersion);
@@ -545,8 +557,15 @@ module.exports = function (grunt) {
             }
 
             function writeSpec(spec, specHtmlPath, callback) {
+                var configObj = updateConfig(self.options.requirejs.client || self.options.requirejs);
+
+                //is this a coverage task?
+                if (new RegExp(/^(l)?cov(-)?/i).test(self.options.args[0])) {
+                    //then we need to update the baseURL to point to the instrumented code
+                    configObj.baseUrl = self.options.reporting.coverage.dest;
+                }
                 var templateData = {
-                    config: JSON.stringify(updateConfig(self.options.requirejs.client || self.options.requirejs)),
+                    config: JSON.stringify(configObj),
                     spec: path.resolve(spec),
                     castle: JSON.stringify(global.castle.config),
                     basePath: process.cwd() + '/node_modules/grunt-castle',
