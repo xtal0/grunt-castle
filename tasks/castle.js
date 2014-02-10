@@ -25,8 +25,14 @@ module.exports = function (grunt) {
     var util = require('util');
 
     // CODE COVERAGE REPORTING UTILS
-    function aggregate(results, result) { // mocha json-cov reporter
-        results.files = results.files.concat(result.files);
+    function aggregate(results, result, spec) { // mocha json-cov reporter
+        var fileResults = _.filter(result.files, function(f) {
+            var testFile = f.filename.replace(/js$/i, 'html');
+            return new RegExp('(.)*' + testFile + '$', 'i').test(spec);
+        });
+        if (fileResults && fileResults.length) {
+            results.files = results.files.concat(fileResults);
+        }
         results.hits += result.hits;
         results.misses += result.misses;
         results.sloc += result.sloc;
@@ -38,9 +44,6 @@ module.exports = function (grunt) {
         if (results.sloc > 0) {
             results.coverage = (results.hits / results.sloc) * 100;
         }
-
-        //grunt.log.writeln('\n\n\n\n\nresult: ' + util.inspect(result, true, null));
-        //grunt.log.writeln('\n\n\n\n\naggregate: ' + util.inspect(results, true, null));
 
         return results;
     }
@@ -161,7 +164,13 @@ module.exports = function (grunt) {
         },
 
         requirejsConfigure: function () {
-            requirejs.config(_.clone(this.options.requirejs.server || this.options.requirejs, true));
+            var configObj = _.clone(this.options.requirejs.server || this.options.requirejs, true);
+            if (new RegExp(/^(l)?cov(-)?/i).test(this.options.args[0])) {
+                //then we need to update the baseURL to point to the instrumented code
+                configObj.baseUrl = this.options.reporting.coverage.dest;
+            }
+            requirejs.config(configObj);
+
             global.castle = {};
             global.castle.config = this.options;
         },
@@ -394,7 +403,7 @@ module.exports = function (grunt) {
                             if (!results) {
                                 results = result;
                             } else {
-                                results = aggregate(results, result);
+                                results = aggregate(results, result, spec);
                             }
                             count++;
                             if (count === specs.length) {
