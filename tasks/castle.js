@@ -274,7 +274,7 @@ module.exports = function (grunt) {
                 if (options.server) {
                     self.coverageServer(options.args[1], function (results) {
                         done();
-                    }, {type: 'lcov', reporter: 'json-cov'});
+                    }, true);
                 }
             });
         },
@@ -428,7 +428,7 @@ module.exports = function (grunt) {
                 });
         },
 
-        coverageClient: function (file, callback, covOptions) {
+        coverageClient: function (file, callback, lcov) {
             var options = this.options;
             var results;
             var count = 0;
@@ -436,11 +436,10 @@ module.exports = function (grunt) {
             var specs = grunt.file.expand(path.resolve(options.specs['client-target']) + '/**/*.html');
             var covReportPath = this.getCovReportPath('client');
             var self = this;
-            var reporter = covOptions && covOptions.reporter ? covOptions.reporter : 'json-cov';
 
             specs.forEach(function (spec) {
                 grunt.log.writeln('running client spec:' + spec);
-                var cmd = "node_modules/grunt-castle/node_modules/mocha-phantomjs/bin/mocha-phantomjs " + spec +  " -R " + reporter;
+                var cmd = "node_modules/grunt-castle/node_modules/mocha-phantomjs/bin/mocha-phantomjs " + spec +  " -R json-cov";
                 var mocha = exec(cmd,
                     { maxBuffer: 10000 * 1024 },
                     function(error, stdout, stderr) {
@@ -453,19 +452,8 @@ module.exports = function (grunt) {
                             }
                             count++;
                             if (count === specs.length) {
-                                if (covOptions) {
-                                    switch (covOptions.type) {
-                                        case 'lcov':
-                                            self.lcovClient(results, callback);
-                                            break;
-                                        default:
-                                            if (!grunt.file.exists(covReportPath)) {
-                                                grunt.file.mkdir(covReportPath);
-                                            }
-                                            grunt.log.writeln('writing client coverage report');
-                                            writeClientCoverage(results, covReportPath);
-                                            return callback();
-                                    }
+                                if (lcov) {
+                                    self.lcovClient(results, callback);
                                 } else {
                                     if (!grunt.file.exists(covReportPath)) {
                                         grunt.file.mkdir(covReportPath);
@@ -487,12 +475,11 @@ module.exports = function (grunt) {
             });
         },
 
-        coverageServer: function (file, callback, covOptions) {
-            var lcov = covOptions && covOptions.type === 'lcov';
+        coverageServer: function (file, callback, lcov) {
             var covReportPath = this.getCovReportPath('server');
             var specs = this.getSpecs('server');
             var outFile = path.normalize(covReportPath + (lcov ? '/index.json' : '/index.html'));
-            var reporter = covOptions && covOptions.reporter ? covOptions.reporter : 'html-cov';
+            var reporter = lcov ? 'json-cov' : 'html-cov';
             var mocha = new Mocha({ ui: 'bdd', reporter: reporter });
             var counter = 0;
             var output;
@@ -514,14 +501,8 @@ module.exports = function (grunt) {
                     output.end();
                     process.stdout.write = _stdout;
                     grunt.log.writeln('writing server coverage report');
-                    if (covOptions) {
-                        switch (covOptions.type) {
-                            case 'lcov':
-                                self.lcovServer(callback);
-                                break;
-                            default:
-                                callback();
-                        }
+                    if (lcov) {
+                        self.lcovServer(callback);
                     } else {
                         callback();
                     }
@@ -591,7 +572,10 @@ module.exports = function (grunt) {
         },
 
         xunitClient: function (results, callback) {
-            this.writeXunitResults(results, 'client', callback);
+            grunt.log.writeln('in xunitClient');
+            //this.writeXunitResults(results, 'client', callback);
+            grunt.log.writeln(util.inspect(results, true, null));
+            callback();
         },
         // END COVERAGE
 
