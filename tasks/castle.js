@@ -261,12 +261,12 @@ module.exports = function (grunt) {
                     if (self.specsWritten) {
                         self.coverageClient(options.args[1], function (results) {
                             done();
-                        }, true);
+                        }, {type: 'lcov', reporter: 'json-cov'});
                     } else {
                         self.writeClientSpecs(options.args[1], function () {
                             self.coverageClient(options.args[1], function (results) {
                                 done();
-                            }, true);
+                            }, {type: 'lcov', reporter: 'json-cov'});
                         });
                     }
                 }
@@ -274,7 +274,44 @@ module.exports = function (grunt) {
                 if (options.server) {
                     self.coverageServer(options.args[1], function (results) {
                         done();
-                    }, true);
+                    }, {type: 'lcov', reporter: 'json-cov'});
+                }
+            });
+        },
+
+        xunit: function (options) {
+            var self = this;
+            var waitFor = options.client && options.server ? 2 : 1;
+            var ranCount = 0;
+
+            function done() {
+                ranCount++;
+                if (waitFor === ranCount) {
+                    options.done();
+                }
+            }
+
+            options.coverage = true;
+            this.setup(options);
+            this.jscoverage(function (err) {
+                if (options.client) {
+                    if (self.specsWritten) {
+                        self.coverageClient(options.args[1], function (results) {
+                            done();
+                        }, {type: 'xunit', reporter: 'xunit'});
+                    } else {
+                        self.writeClientSpecs(options.args[1], function () {
+                            self.coverageClient(options.args[1], function (results) {
+                                done();
+                            }, {type: 'xunit', reporter: 'xunit'});
+                        });
+                    }
+                }
+
+                if (options.server) {
+                    self.xunitServer(options.args[1], function (results) {
+                        done();
+                    });
                 }
             });
         },
@@ -391,7 +428,7 @@ module.exports = function (grunt) {
                 });
         },
 
-        coverageClient: function (file, callback, lcov) {
+        coverageClient: function (file, callback, covOptions) {
             var options = this.options;
             var results;
             var count = 0;
@@ -399,10 +436,11 @@ module.exports = function (grunt) {
             var specs = grunt.file.expand(path.resolve(options.specs['client-target']) + '/**/*.html');
             var covReportPath = this.getCovReportPath('client');
             var self = this;
+            var reporter = covOptions && covOptions.reporter ? covOptions.reporter : 'json-cov';
 
             specs.forEach(function (spec) {
                 grunt.log.writeln('running client spec:' + spec);
-                var cmd = "node_modules/grunt-castle/node_modules/mocha-phantomjs/bin/mocha-phantomjs " + spec +  " -R json-cov";
+                var cmd = "node_modules/grunt-castle/node_modules/mocha-phantomjs/bin/mocha-phantomjs " + spec +  " -R " + reporter;
                 var mocha = exec(cmd,
                     { maxBuffer: 10000 * 1024 },
                     function(error, stdout, stderr) {
@@ -415,8 +453,19 @@ module.exports = function (grunt) {
                             }
                             count++;
                             if (count === specs.length) {
-                                if (lcov) {
-                                    self.lcovClient(results, callback);
+                                if (covOptions) {
+                                    switch (covOptions.type) {
+                                        case 'lcov':
+                                            self.lcovClient(results, callback);
+                                            break;
+                                        default:
+                                            if (!grunt.file.exists(covReportPath)) {
+                                                grunt.file.mkdir(covReportPath);
+                                            }
+                                            grunt.log.writeln('writing client coverage report');
+                                            writeClientCoverage(results, covReportPath);
+                                            return callback();
+                                    }
                                 } else {
                                     if (!grunt.file.exists(covReportPath)) {
                                         grunt.file.mkdir(covReportPath);
@@ -438,11 +487,12 @@ module.exports = function (grunt) {
             });
         },
 
-        coverageServer: function (file, callback, lcov) {
+        coverageServer: function (file, callback, covOptions) {
+            var lcov = covOptions && covOptions.type === 'lcov';
             var covReportPath = this.getCovReportPath('server');
             var specs = this.getSpecs('server');
             var outFile = path.normalize(covReportPath + (lcov ? '/index.json' : '/index.html'));
-            var reporter = lcov ? 'json-cov' : 'html-cov';
+            var reporter = covOptions && covOptions.reporter ? covOptions.reporter : 'html-cov';
             var mocha = new Mocha({ ui: 'bdd', reporter: reporter });
             var counter = 0;
             var output;
@@ -464,8 +514,14 @@ module.exports = function (grunt) {
                     output.end();
                     process.stdout.write = _stdout;
                     grunt.log.writeln('writing server coverage report');
-                    if (lcov) {
-                        self.lcovServer(callback);
+                    if (covOptions) {
+                        switch (covOptions.type) {
+                            case 'lcov':
+                                self.lcovServer(callback);
+                                break;
+                            default:
+                                callback();
+                        }
                     } else {
                         callback();
                     }
@@ -490,6 +546,52 @@ module.exports = function (grunt) {
 
         lcovClient: function (results, callback) {
             this.writeLcovResults(results, 'client', callback);
+        },
+
+        xunitServer: function (file, callback) {
+            var specs = this.getSpecs('server');
+            var mocha = new Mocha({ ui: 'bdd', reporter: 'xunit' });
+            var covReportPath = this.getCovReportPath('server');
+            var filename = this.options.reporting && this.options.reporting.xunit ? ('/' + this.options.reporting.xunit.filename) : null;
+            var outFile = covReportPath + (filename || '/xunit.xml');
+
+            if (!grunt.file.exists(covReportPath)) {
+                grunt.file.mkdir(covReportPath);
+            }
+            if (grunt.file.exists(outFile)) {
+                grunt.file.delete(outFile);
+            }
+            var output = fs.createWriteStream(outFile, { flags: 'w' });
+            var _stdout = process.stdout.write;
+
+            var runMocha = function() {
+                process.stdout.write = function(chunk, encoding, cb) {
+                    return output.write(chunk, encoding, cb);
+                };
+                mocha.run(function () {
+                    output.end();
+                    process.stdout.write = _stdout;
+                    return callback();
+                });
+            };
+
+            if (file) {
+                var spec = this.resolveFileSpec(file, 'server');
+                if (!spec) {
+                    throw 'no spec found';
+                }
+                mocha.addFile(spec);
+                runMocha();
+            } else {
+                specs.forEach(function (spec, index) {
+                    mocha.addFile(path.resolve(spec));
+                });
+                runMocha();
+            }
+        },
+
+        xunitClient: function (results, callback) {
+            this.writeXunitResults(results, 'client', callback);
         },
         // END COVERAGE
 
@@ -525,6 +627,54 @@ module.exports = function (grunt) {
                 stream.write(lcov);
             }
             stream.end();
+            if (env === 'server') {
+                grunt.file.delete(covReportPath + '/index.json');
+            }
+            callback();
+        },
+
+        writeXunitResults: function (results, env, callback) {
+            var covReportPath = this.getCovReportPath(env);
+            var xunitFilename = this.options.reporting && this.options.reporting.xunit ? ('/' + this.options.reporting.xunit.filename) : null;
+            var xunitFile = covReportPath + (lcovFilename || '/index.xml');
+            var stream;
+
+            if (!grunt.file.exists(covReportPath)) {
+                grunt.file.mkdir(covReportPath);
+            }
+            if (grunt.file.exists(lcovFile)) {
+                grunt.file.delete(lcovFile);
+            }
+            //stream = fs.createWriteStream(xunitFile);
+
+            var fileCount = results.length;
+            var details = {
+                name: "Mocha Tests",
+                tests: "0",
+                failures: "0",
+                errors: "0",
+                skip: "0",
+                time: "0"
+            };
+            var contents = [ { _attr: details } ];
+            /*for (var i = 0; i < fileCount; i++) {
+                var file = results.files[j];
+                var lcov = 'SF:' + file.filename + '\n';
+                var lines = file.source;
+                for (var k in lines) {
+                    if (lines.hasOwnProperty(k)) {
+                        var line = lines[k];
+                        if (line.coverage !== '') {
+                            lcov = lcov + 'DA:' + k + ',' + line.coverage + '\n';
+                        }
+                    }
+                }
+                lcov = lcov + 'end_of_record\n';
+                stream.write(lcov);
+            }
+            stream.end();*/
+            grunt.log.writeln('filecount = ' + fileCount);
+            grunt.log.writeln(util.inspect(details, true, null));
             if (env === 'server') {
                 grunt.file.delete(covReportPath + '/index.json');
             }
@@ -742,6 +892,19 @@ module.exports = function (grunt) {
                 break;
             case 'analyze':
                 castle.analyze(options);
+                break;
+            case 'xunit':
+                options.server = true;
+                options.client = true;
+                castle.xunit(options);
+                break;
+            case 'xunit-client':
+                options.client = true;
+                castle.xunit(options);
+                break;
+            case 'xunit-server':
+                options.server = true;
+                castle.xunit(options);
                 break;
         }
 
