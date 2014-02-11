@@ -258,9 +258,17 @@ module.exports = function (grunt) {
             this.setup(options);
             this.jscoverage(function (err) {
                 if (options.client) {
-                    self.coverageClient(options.args[1], function (results) {
-                        done();
-                    }, true);
+                    if (self.specsWritten) {
+                        self.coverageClient(options.args[1], function (results) {
+                            done();
+                        }, true);
+                    } else {
+                        self.writeClientSpecs(options.args[1], function () {
+                            self.coverageClient(options.args[1], function (results) {
+                                done();
+                            }, true);
+                        });
+                    }
                 }
 
                 if (options.server) {
@@ -488,7 +496,8 @@ module.exports = function (grunt) {
         // I/O
         writeLcovResults: function (results, env, callback) {
             var covReportPath = this.getCovReportPath(env);
-            var lcovFile = covReportPath + '/index.lcov';
+            var lcovFilename = this.options.reporting && this.options.reporting.lcov ? ('/' + this.options.reporting.lcov.filename) : null;
+            var lcovFile = covReportPath + (lcovFilename || '/index.lcov');
             var stream;
 
             if (!grunt.file.exists(covReportPath)) {
@@ -591,6 +600,7 @@ module.exports = function (grunt) {
                 var specHtmlPath = this.specPathToHtmlSpecPath(spec);
                 writeSpec(spec, specHtmlPath, callback);
             } else {
+                var self = this;
                 var counter = 0;
                 var limit = specs.length;
                 specs.forEach(function (spec) {
@@ -598,6 +608,7 @@ module.exports = function (grunt) {
                     writeSpec(spec, specHtmlPath, function () {
                         counter++;
                         if (counter === limit) {
+                            self.specsWritten = true;
                             callback();
                         }
                     });
