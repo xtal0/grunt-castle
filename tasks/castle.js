@@ -23,6 +23,7 @@ module.exports = function (grunt) {
     var testModules = ['squire', 'chai', 'sinon', 'sinon-chai', 'grunt-castle'];
     var exec = require("child_process").exec;
     var util = require('util');
+    var xml2js = require('xml2js');
 
     // CODE COVERAGE REPORTING UTILS
     function aggregate(results, result, spec) { // mocha json-cov reporter
@@ -291,29 +292,26 @@ module.exports = function (grunt) {
                 }
             }
 
-            options.coverage = true;
             this.setup(options);
-            this.jscoverage(function (err) {
-                if (options.client) {
-                    if (self.specsWritten) {
-                        self.coverageClient(options.args[1], function (results) {
-                            done();
-                        }, {type: 'xunit', reporter: 'xunit'});
-                    } else {
-                        self.writeClientSpecs(options.args[1], function () {
-                            self.coverageClient(options.args[1], function (results) {
-                                done();
-                            }, {type: 'xunit', reporter: 'xunit'});
-                        });
-                    }
-                }
-
-                if (options.server) {
-                    self.xunitServer(options.args[1], function (results) {
+            if (options.client) {
+                if (self.specsWritten) {
+                    self.xunitClient(options.args[1], function (results) {
                         done();
                     });
+                } else {
+                    self.writeClientSpecs(options.args[1], function () {
+                        self.xunitClient(options.args[1], function (results) {
+                            done();
+                        });
+                    });
                 }
-            });
+            }
+
+            if (options.server) {
+                self.xunitServer(options.args[1], function (results) {
+                    done();
+                });
+            }
         },
 
         analyze: function (options) {
@@ -572,10 +570,43 @@ module.exports = function (grunt) {
         },
 
         xunitClient: function (results, callback) {
-            grunt.log.writeln('in xunitClient');
-            //this.writeXunitResults(results, 'client', callback);
-            grunt.log.writeln(util.inspect(results, true, null));
-            callback();
+            var options = this.options;
+            var results = [];
+            var files = [];
+            var specs = grunt.file.expand(path.resolve(options.specs['client-target']) + '/**/*.html');
+            var self = this;
+
+            specs.forEach(function (spec) {
+                var cmd = "node_modules/grunt-castle/node_modules/mocha-phantomjs/bin/mocha-phantomjs " + spec +  " -R xunit";
+                var mocha = exec(cmd,
+                    { maxBuffer: 10000 * 1024 },
+                    function(error, stdout, stderr) {
+                        if (!error) {
+                            try {
+                                var parser = new xml2js.Parser();
+                                parser.parseString(stdout, function (err, result) {
+                                    results.push(result);
+                                });
+
+                                if (results.length === specs.length) {
+                                    self.writeXunitResults(results, callback);
+                                    return callback();
+                                }
+                            }
+                            catch(err) {
+                                console.error("error: " + err);
+                                process.exit(1);
+                            }
+                        } else {
+                            console.error("error executing " + cmd + " : " + error);
+                            if (stderr) {
+                                console.error(stderr);
+                            }
+                            process.exit(1);
+                        }
+                    }
+                );
+            });
         },
         // END COVERAGE
 
@@ -617,19 +648,20 @@ module.exports = function (grunt) {
             callback();
         },
 
-        writeXunitResults: function (results, env, callback) {
-            var covReportPath = this.getCovReportPath(env);
+        writeXunitResults: function (results, callback) {
+            var covReportPath = this.getCovReportPath('client');
             var xunitFilename = this.options.reporting && this.options.reporting.xunit ? ('/' + this.options.reporting.xunit.filename) : null;
-            var xunitFile = covReportPath + (lcovFilename || '/index.xml');
+            var xunitFile = covReportPath + (xunitFilename || '/xunit.xml');
             var stream;
+
+            grunt.log.writeln('filename is ' + xunitFile);
 
             if (!grunt.file.exists(covReportPath)) {
                 grunt.file.mkdir(covReportPath);
             }
-            if (grunt.file.exists(lcovFile)) {
-                grunt.file.delete(lcovFile);
+            if (grunt.file.exists(xunitFile)) {
+                grunt.file.delete(xunitFile);
             }
-            //stream = fs.createWriteStream(xunitFile);
 
             var fileCount = results.length;
             var details = {
@@ -637,31 +669,30 @@ module.exports = function (grunt) {
                 tests: "0",
                 failures: "0",
                 errors: "0",
-                skip: "0",
+                skipped: "0",
                 time: "0"
             };
             var contents = [ { _attr: details } ];
-            /*for (var i = 0; i < fileCount; i++) {
-                var file = results.files[j];
-                var lcov = 'SF:' + file.filename + '\n';
-                var lines = file.source;
-                for (var k in lines) {
-                    if (lines.hasOwnProperty(k)) {
-                        var line = lines[k];
-                        if (line.coverage !== '') {
-                            lcov = lcov + 'DA:' + k + ',' + line.coverage + '\n';
-                        }
+            for (var i = 0; i < fileCount; i++) {
+                var detail = results[i].testsuite.$;
+                var testCount = parseInt(detail.tests, 10)
+                var skipCount = parseInt(detail.skipped, 10);
+                details.tests = parseInt(details.tests, 10) + testCount + "";
+                details.failures = parseInt(details.failures, 10) + parseInt(detail.failures, 10) + "";
+                details.errors = parseInt(details.errors, 10) + parseInt(detail.errors, 10) + "";
+                details.skipped = parseInt(details.skipped, 10) + skipCount + "";
+                details.time = parseFloat(details.time, 10) + parseFloat(detail.time, 10) + "";
+                details.timestamp = details.timestamp || detail.timestamp;
+
+                if (results[i].testsuite.testcase) {
+                    var testcases = results[i].testsuite.testcase;
+                    for (var j = 0; j < testCount - skipCount; j++) {
+                        contents.push( { testcase: [ { _attr: testcases[j].$ } ] });
                     }
                 }
-                lcov = lcov + 'end_of_record\n';
-                stream.write(lcov);
             }
-            stream.end();*/
-            grunt.log.writeln('filecount = ' + fileCount);
+            var xunit = [ {testsuite: contents} ];
             grunt.log.writeln(util.inspect(details, true, null));
-            if (env === 'server') {
-                grunt.file.delete(covReportPath + '/index.json');
-            }
             callback();
         },
 
