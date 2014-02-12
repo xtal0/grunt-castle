@@ -24,6 +24,7 @@ module.exports = function (grunt) {
     var exec = require("child_process").exec;
     var util = require('util');
     var xml2js = require('xml2js');
+    var XML = require('xml');
 
     // CODE COVERAGE REPORTING UTILS
     function aggregate(results, result, spec) { // mocha json-cov reporter
@@ -569,7 +570,7 @@ module.exports = function (grunt) {
             }
         },
 
-        xunitClient: function (results, callback) {
+        xunitClient: function (file, callback) {
             var options = this.options;
             var results = [];
             var files = [];
@@ -590,7 +591,6 @@ module.exports = function (grunt) {
 
                                 if (results.length === specs.length) {
                                     self.writeXunitResults(results, callback);
-                                    return callback();
                                 }
                             }
                             catch(err) {
@@ -652,9 +652,6 @@ module.exports = function (grunt) {
             var covReportPath = this.getCovReportPath('client');
             var xunitFilename = this.options.reporting && this.options.reporting.xunit ? ('/' + this.options.reporting.xunit.filename) : null;
             var xunitFile = covReportPath + (xunitFilename || '/xunit.xml');
-            var stream;
-
-            grunt.log.writeln('filename is ' + xunitFile);
 
             if (!grunt.file.exists(covReportPath)) {
                 grunt.file.mkdir(covReportPath);
@@ -675,7 +672,7 @@ module.exports = function (grunt) {
             var contents = [ { _attr: details } ];
             for (var i = 0; i < fileCount; i++) {
                 var detail = results[i].testsuite.$;
-                var testCount = parseInt(detail.tests, 10)
+                var testCount = parseInt(detail.tests, 10);
                 var skipCount = parseInt(detail.skipped, 10);
                 details.tests = parseInt(details.tests, 10) + testCount + "";
                 details.failures = parseInt(details.failures, 10) + parseInt(detail.failures, 10) + "";
@@ -692,8 +689,14 @@ module.exports = function (grunt) {
                 }
             }
             var xunit = [ {testsuite: contents} ];
-            grunt.log.writeln(util.inspect(details, true, null));
-            callback();
+            fs.writeFile(xunitFile, XML(xunit, true), function (err) {
+                if (err) {
+                    grunt.log.error("error: " + err);
+                    process.exit(1);
+                } else {
+                    callback();
+                }
+            });
         },
 
         writeClientSpecs: function (file, callback) {

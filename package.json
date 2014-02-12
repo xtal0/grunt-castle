@@ -60,7 +60,9 @@
         "mocha-phantomjs": "3.1.x",
         "jade": "0.27.x",
         "lodash": "2.4.x",
-        "findup-sync": "0.1.x"
+        "findup-sync": "0.1.x",
+        "xml2js": "0.4.x",
+        "xml": "0.0.x"
     },
     "devDependencies": {
         "grunt-contrib-jshint": "~0.6.0",
