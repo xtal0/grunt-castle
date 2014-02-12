@@ -25,6 +25,7 @@ module.exports = function (grunt) {
     var util = require('util');
     var xml2js = require('xml2js');
     var XML = require('xml');
+    var mocha = new Mocha({ui:'bdd'});
 
     // CODE COVERAGE REPORTING UTILS
     function aggregate(results, result, spec) { // mocha json-cov reporter
@@ -356,7 +357,7 @@ module.exports = function (grunt) {
 
         testServer: function (file, callback) {
             var specs = this.getSpecs('server');
-            var mocha = new Mocha({ ui: 'bdd', reporter: 'spec' });
+            mocha.files = [];
 
             if (file) {
                 var spec = this.resolveFileSpec(file, 'server');
@@ -364,12 +365,14 @@ module.exports = function (grunt) {
                     throw 'no spec found';
                 }
                 mocha.addFile(spec);
-                mocha.run(callback);
+                mocha.reporter('spec').run(callback);
             } else {
                 specs.forEach(function (spec, index) {
                     mocha.addFile(path.resolve(spec));
                 });
-                mocha.run(callback);
+                mocha.reporter('spec').run(function() {
+                    callback();
+                });
             }
         },
         // END UNIT TESTING
@@ -479,12 +482,13 @@ module.exports = function (grunt) {
             var specs = this.getSpecs('server');
             var outFile = path.normalize(covReportPath + (lcov ? '/index.json' : '/index.html'));
             var reporter = lcov ? 'json-cov' : 'html-cov';
-            var mocha = new Mocha({ ui: 'bdd', reporter: reporter });
             var counter = 0;
             var output;
             var specCount = specs.length;
             var self = this;
             var _stdout = process.stdout.write;
+
+            mocha.files = [];
 
             if (!grunt.file.exists(covReportPath)) {
                 grunt.file.mkdir(covReportPath);
@@ -496,7 +500,7 @@ module.exports = function (grunt) {
                 process.stdout.write = function(chunk, encoding, cb) {
                     return output.write(chunk, encoding, cb);
                 };
-                mocha.run(function () {
+                mocha.reporter(reporter).run(function () {
                     output.end();
                     process.stdout.write = _stdout;
                     grunt.log.writeln('writing server coverage report');
@@ -530,10 +534,11 @@ module.exports = function (grunt) {
 
         xunitServer: function (file, callback) {
             var specs = this.getSpecs('server');
-            var mocha = new Mocha({ ui: 'bdd', reporter: 'xunit' });
             var covReportPath = this.getCovReportPath('server');
             var filename = this.options.reporting && this.options.reporting.xunit ? ('/' + this.options.reporting.xunit.filename) : null;
             var outFile = covReportPath + (filename || '/xunit.xml');
+
+            mocha.files = [];
 
             if (!grunt.file.exists(covReportPath)) {
                 grunt.file.mkdir(covReportPath);
@@ -543,12 +548,14 @@ module.exports = function (grunt) {
             }
             var output = fs.createWriteStream(outFile, { flags: 'w' });
             var _stdout = process.stdout.write;
+            grunt.log.writeln('Creating ' + outFile + ' ...');
 
             var runMocha = function() {
+
                 process.stdout.write = function(chunk, encoding, cb) {
                     return output.write(chunk, encoding, cb);
                 };
-                mocha.run(function () {
+                mocha.reporter('xunit').run(function () {
                     output.end();
                     process.stdout.write = _stdout;
                     return callback();
@@ -623,6 +630,7 @@ module.exports = function (grunt) {
             if (grunt.file.exists(lcovFile)) {
                 grunt.file.delete(lcovFile);
             }
+            grunt.log.writeln('Creating ' + lcovFile + '...');
             stream = fs.createWriteStream(lcovFile);
 
             var fileCount = results.files.length;
@@ -688,6 +696,7 @@ module.exports = function (grunt) {
                     }
                 }
             }
+            grunt.log.writeln('Creating ' + xunitFile + ' ...');
             var xunit = [ {testsuite: contents} ];
             fs.writeFile(xunitFile, XML(xunit, true), function (err) {
                 if (err) {
