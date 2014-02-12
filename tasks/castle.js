@@ -379,55 +379,61 @@ module.exports = function (grunt) {
 
         // START COVERAGE
         jscoverage: function (callback) {
-            var jscovConf = grunt.config.get('jscoverage'),
-                self = this;
+            var self = this;
+            if (!this.alreadyInstrumented) {
+                var jscovConf = grunt.config.get('jscoverage'),
+                    self = this;
 
-            if (grunt.file.exists(this.options.reporting.coverage.dest)) {
-                grunt.file.delete(this.options.reporting.coverage.dest);
-            }
+                if (grunt.file.exists(this.options.reporting.coverage.dest)) {
+                    grunt.file.delete(this.options.reporting.coverage.dest);
+                }
 
-            var args2 = [];
-            args2.push(this.options.reporting.src);
-            args2.push(this.options.reporting.coverage.dest);
+                var args2 = [];
+                args2.push(this.options.reporting.src);
+                args2.push(this.options.reporting.coverage.dest);
 
-            if (!this.options.reporting.highlight) {
-                args2.push('--no-highlight');
-            }
-            if (this.options.reporting.coverage.exclude) {
-                args2.push('--exclude=' + this.options.reporting.coverage.exclude);
-            }
-            if (this.options.reporting.encoding) {
-                args2.push('--encoding=' + this.options.reporting.encoding);
-            }
-            if (this.options.reporting.noInstrument) {
-                var toIgnore = this.options.reporting.noInstrument;
-                if (typeof toIgnore === 'string') {
-                    args2.push('--no-instrument=' + toIgnore);
-                } else {
-                    for (var idx = 0; idx < toIgnore.length; idx++) {
-                        args2.push('--no-instrument=' + toIgnore[idx]);
+                if (!this.options.reporting.highlight) {
+                    args2.push('--no-highlight');
+                }
+                if (this.options.reporting.coverage.exclude) {
+                    args2.push('--exclude=' + this.options.reporting.coverage.exclude);
+                }
+                if (this.options.reporting.encoding) {
+                    args2.push('--encoding=' + this.options.reporting.encoding);
+                }
+                if (this.options.reporting.noInstrument) {
+                    var toIgnore = this.options.reporting.noInstrument;
+                    if (typeof toIgnore === 'string') {
+                        args2.push('--no-instrument=' + toIgnore);
+                    } else {
+                        for (var idx = 0; idx < toIgnore.length; idx++) {
+                            args2.push('--no-instrument=' + toIgnore[idx]);
+                        }
                     }
                 }
-            }
-            if (this.options.reporting.jsVersion) {
-                args2.push('--js-version=' + this.options.reporting.jsVersion);
-            }
+                if (this.options.reporting.jsVersion) {
+                    args2.push('--js-version=' + this.options.reporting.jsVersion);
+                }
 
-            grunt.util.spawn({
-                    cmd: 'jscoverage',
-                    args: args2,
-                    opts: {
-                        stdio: 'inherit'
-                    }
-                },
-                function (error, result) {
-                    if (error) {
-                        grunt.log.error(result.stderr);
-                        callback(false);
-                    }
-                    grunt.log.writeln(result.stdout);
-                    callback();
-                });
+                grunt.util.spawn({
+                        cmd: 'jscoverage',
+                        args: args2,
+                        opts: {
+                            stdio: 'inherit'
+                        }
+                    },
+                    function (error, result) {
+                        if (error) {
+                            grunt.log.error(result.stderr);
+                            callback(false);
+                        }
+                        self.alreadyInstrumented = true;
+                        grunt.log.writeln(result.stdout);
+                        callback();
+                    });
+            } else {
+                callback();
+            }
         },
 
         coverageClient: function (file, callback, lcov) {
