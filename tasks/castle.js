@@ -880,6 +880,8 @@ module.exports = function (grunt) {
             done: done
         });
 
+        castle.alreadyInstrumented = grunt.option('alreadyInstrumented');
+
         if (!this.args[0]) {
             this.args[0] = 'test';
         }
