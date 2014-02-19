@@ -1,7 +1,7 @@
 {
     "name": "grunt-castle",
     "description": "requirejs client, server, and client-server unit testing",
-    "version": "0.3.1",
+    "version": "0.3.2",
     "homepage": "",
     "private": true,
     "author": {
