@@ -172,6 +172,7 @@ module.exports = function (grunt) {
                 //then we need to update the baseURL to point to the instrumented code
                 configObj.baseUrl = this.options.reporting.coverage.dest;
             }
+            configObj.context = configObj.context || 'castle';
             requirejs.config(configObj);
 
             global.castle = {};
