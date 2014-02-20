@@ -49,7 +49,7 @@
         "sinon": "1.7.x",
         "sinon-chai": "2.1.x",
         "requirejs": "2.1.10",
-        "squirejs": "0.2.x",
+        "squirejs": "0.1.x",
         "async": "0.2.x",
         "grunt-mocha": "0.4.x",
         "handlebars": "1.0.12",
