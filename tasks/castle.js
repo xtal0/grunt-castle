@@ -381,8 +381,7 @@ module.exports = function (grunt) {
         jscoverage: function (callback) {
             var self = this;
             if (!this.alreadyInstrumented) {
-                var jscovConf = grunt.config.get('jscoverage'),
-                    self = this;
+                var jscovConf = grunt.config.get('jscoverage');
 
                 if (grunt.file.exists(this.options.reporting.coverage.dest)) {
                     grunt.file.delete(this.options.reporting.coverage.dest);
@@ -783,7 +782,6 @@ module.exports = function (grunt) {
                 var specHtmlPath = this.specPathToHtmlSpecPath(spec);
                 writeSpec(spec, specHtmlPath, callback);
             } else {
-                var self = this;
                 var counter = 0;
                 var limit = specs.length;
                 specs.forEach(function (spec) {
