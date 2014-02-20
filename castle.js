@@ -109,7 +109,8 @@ define(function () {
             }
 
             requirejs(['squire'], function (Squire) {
-                var injector = new Squire(options.context || 'castle');
+                var injector = new Squire(options.context || '_');
+                // TODO: #15 var injector = new Squire(options.context || 'castle');
                 _Squire = Squire;
 
                 self._loadMocks(options.mocks, function (mocks) {
