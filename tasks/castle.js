@@ -21,7 +21,7 @@ module.exports = function (grunt) {
     var _ = require('lodash');
     var findup = require('findup-sync');
     var testModules = ['squire', 'chai', 'sinon', 'sinon-chai', 'grunt-castle'];
-    var execFile = require("child_process").execFile;
+    var execFile = require('child_process').execFile;
     var util = require('util');
     var xml2js = require('xml2js');
     var XML = require('xml');
@@ -58,8 +58,6 @@ module.exports = function (grunt) {
             }
 
         }
-
-        console.log('sloc: ' + results.sloc);
 
         return results;
     }
@@ -466,11 +464,6 @@ module.exports = function (grunt) {
                     function(error, stdout, stderr) {
                         if (!error) {
                             var result = JSON.parse(stdout);
-                            /*if (!results) {
-                                results = result;
-                            } else {
-                                results = aggregate(results, result, spec);
-                            }*/
                             results = aggregate(results, result, spec);
                             count++;
                             if (count === specs.length) {
